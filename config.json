@@ -1,0 +1,9 @@
+{
+    "epochs": 10,
+    "embedding_dim": 32,
+    "vocab_size": 49949,
+    "dense_feature_dim": 512,
+    "dropout_rate": 0.2,
+    "ner_tag_size": 31,
+    "maxlen": 27
+}
