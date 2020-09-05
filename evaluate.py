@@ -1,5 +1,6 @@
 import numpy as np
 import json
+from sklearn.metrics import f1_score
 
 from tensorflow.keras.models import load_model
 from model import MyModel
@@ -28,16 +29,37 @@ with open(ner_to_index_filename, 'rb') as f:
 
 
 '''
-테스트 함수
-num_of_case: test 데이터셋의 몇번째 인덱스 문장을 테스트 해볼건지
+전체 테스트 함수
+f1-score 계산
 '''
-def test_one(model, num_of_case, X_test, y_test):
-    predictions = model(X_test[num_of_case:num_of_case+1], training=False)    
-    
-    print('문장 토큰|실제ner|예측ner')
-    print('-------------------------')
-    for i, j, t in zip(X_test[num_of_case], y_test[num_of_case], predictions[0].numpy()):
-        print(idx_to_token[i]+'\t'+index_to_ner[np.argmax(j, axis=-1)]+'\t'+index_to_ner[np.argmax(t, axis=-1)])
+def test_all(model, X_test, y_test):
+    predictions = model(X_test, training=False)   
+
+    y_pred = np.array([np.argmax(prediction.numpy(), axis=-1) for prediction in predictions])
+
+    y_test = np.array([np.argmax(y, axis=-1) for y in y_test])
+
+    f1 = f1_score(y_test.flatten(), y_pred.flatten(), average='micro')
+    print(f'f1-score = {f1}')
+    print('\n\n')
+
+
+
+'''
+일부 테스트 함수
+start_of_case: test 데이터셋의 몇번째 인덱스 문장을 시작으로 테스트 해볼건지
+end_of_case: 몇번째 인덱스 문장을 끝으로 테스트
+'''
+def test_one(model, start_of_case, end_of_case, X_test, y_test):
+    predictions = model(X_test[start_of_case:end_of_case+1], training=False)   
+
+    for idx, prediction in enumerate(predictions):
+        print(f'>> #{idx+1}번째 문장 테스트')
+        print('문장 토큰\t|실제ner\t|예측ner')
+        print('-'*45)
+        for i, j, t in zip(X_test[start_of_case+idx], y_test[start_of_case+idx], prediction.numpy()):
+            print(idx_to_token[i]+'\t\t'+index_to_ner[np.argmax(j, axis=-1)]+'\t\t'+index_to_ner[np.argmax(t, axis=-1)])
+        print('='*45)
 
 
 
@@ -48,12 +70,12 @@ if __name__ == "__main__":
     ########################################################################
 
     # config 로딩
-    print('config를 읽어옵니다...')
+    print('>> config를 읽어옵니다...')
 
     with open(config_filename, 'rb') as f:
         config = json.load(f)   
 
-    print('읽기 완료!\n')
+    print('>> 읽기 완료!\n')
 
 
 
@@ -62,10 +84,10 @@ if __name__ == "__main__":
     ## load evaluate data
     ########################################################################
 
-    print('eval 데이터를 읽어옵니다...')
+    print('>> eval 데이터를 읽어옵니다...')
     X_test = np.load('train_val_eval_data/X_test.npy')
     y_test = np.load('train_val_eval_data/y_test.npy')
-    print('읽기 완료!\n')
+    print('>> 읽기 완료!\n')
 
 
 
@@ -73,20 +95,28 @@ if __name__ == "__main__":
     ########################################################################
     ## load the model
     ########################################################################
-    print('\n\nmodel을 읽어옵니다...')
+    print('\n\n>> model을 읽어옵니다...')
     # # Recreate the exact same model, including its weights and the optimizer
     model = load_model(saved_model_filename)
-    print('읽기 완료!\n')
+    print('>> 읽기 완료!\n')
 
 
 
 
     ########################################################################
-    ## Evaluate
+    ## Evaluate All
     ########################################################################
 
-    num_of_case = 15
-    print(f'*** {num_of_case}번째 문장 테스트')
-    test_one(model, num_of_case, X_test, y_test)
+    print(f'*** 전체 문장 테스트')
+    test_all(model, X_test, y_test)
 
+
+    ########################################################################
+    ## Evaluate Part
+    ########################################################################
+
+    start_of_case = 0
+    end_of_case = 1
+    print(f'*** {start_of_case} ~ {end_of_case}번째 문장 테스트')
+    test_one(model, start_of_case, end_of_case, X_test, y_test)
     
